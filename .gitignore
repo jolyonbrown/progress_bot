@@ -1,2 +1,35 @@
-.zig-cache/
+# Zig build artifacts
+zig-cache/
 zig-out/
+
+# Executables and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Editor and OS-specific files
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Dependency management
+deps/
+
+# Project-specific files
+*.log
+*.tmp
+
+# Documentation build output (optional)
+docs/
+
+# Executables
+*
+!*/
+!*.*
+
+# Object files
+*.o
+
