@@ -33,3 +33,7 @@ docs/
 # Object files
 *.o
 
+# Image files
+*.png
+*.svg
+
