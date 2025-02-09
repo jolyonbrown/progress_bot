@@ -25,8 +25,8 @@ pub fn main() !void {
     const elapsed_seconds = now - START_OF_TERM;
     const total_term_seconds = END_OF_TERM - START_OF_TERM;
     const remaining_days = @divTrunc((END_OF_TERM - now), 86400);
-    const percentage_fraction = @as(f32, elapsed_seconds) / @as(f32, total_term_seconds); // 0.0 - 1.0
-    const percentage_complete = percentage_fraction * 100; // Now in 0-100% scale
+    const percentage_fraction = @floatFromInt(f32, elapsed_seconds) / @floatFromInt(f32, total_term_seconds); // 0.0 - 1.0
+    const percentage_complete = percentage_fraction * 100; // Human-readable 0-100%
 
     // Generate tweet text
     const tweet_text = try generateTweet(allocator, percentage_complete, @as(i32, @intCast(remaining_days)));
