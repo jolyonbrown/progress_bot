@@ -25,15 +25,15 @@ pub fn main() !void {
     const elapsed_seconds = now - START_OF_TERM;
     const total_term_seconds = END_OF_TERM - START_OF_TERM;
     const remaining_days = @divTrunc((END_OF_TERM - now), 86400);
-    const percentage_fraction = @as(f32, elapsed_seconds) / @as(f32, total_term_seconds); // Between 0.0 - 1.0
-    const percentage_complete = percentage_fraction * 100; // Now in 0-100 scale
+    const percentage_fraction = @as(f32, elapsed_seconds) / @as(f32, total_term_seconds); // 0.0 - 1.0
+    const percentage_complete = percentage_fraction * 100; // Now in 0-100% scale
 
     // Generate tweet text
     const tweet_text = try generateTweet(allocator, percentage_complete, @as(i32, @intCast(remaining_days)));
     defer allocator.free(tweet_text);
 
     // Generate and save SVG
-    try saveSVG(allocator, "progress.svg", percentage_complete);
+    try saveSVG(allocator, "progress.svg", percentage_fraction);
 
     // Convert SVG to PNG (requires external tool like rsvg-convert or Inkscape)
     try convertSVGtoPNG("progress.svg", "progress.png");
@@ -46,8 +46,8 @@ pub fn main() !void {
 }
 
 // Generates the SVG progress bar dynamically
-pub fn generateSVG(allocator: std.mem.Allocator, percentage: f32) ![]const u8 {
-    const bar_width = @as(i32, @intFromFloat(percentage_fraction * 380.0)); // Corrected scaling
+pub fn generateSVG(allocator: std.mem.Allocator, percentage_fraction: f32) ![]const u8 {
+    const bar_width = @as(i32, @intFromFloat(percentage_fraction * 380.0)); // Now correctly scaled
 
     return std.fmt.allocPrint(allocator, "<svg width=\"400\" height=\"50\" xmlns=\"http://www.w3.org/2000/svg\">\n" ++
         "    <rect width=\"400\" height=\"50\" fill=\"black\"/>\n" ++
@@ -55,12 +55,16 @@ pub fn generateSVG(allocator: std.mem.Allocator, percentage: f32) ![]const u8 {
         "    <rect width=\"{d}\" height=\"30\" x=\"10\" y=\"10\" fill=\"orange\"/>\n" ++
         "    <text x=\"200\" y=\"30\" font-size=\"20\" fill=\"black\" text-anchor=\"middle\">{d}%</text>\n" ++
         "    <title>Presidential term is {d}% complete</title>\n" ++
-        "</svg>\n", .{ bar_width, @as(i32, @intFromFloat(percentage)), @as(i32, @intFromFloat(percentage)) });
+        "</svg>\n", .{
+        bar_width, // Now correctly scales with 0.0-1.0 input
+        @as(i32, @intFromFloat(percentage_fraction * 100)), // Text inside progress bar
+        @as(i32, @intFromFloat(percentage_fraction * 100)), // Title accessibility text
+    });
 }
 
 // Saves the SVG to a file
-pub fn saveSVG(allocator: std.mem.Allocator, filename: []const u8, percentage: f32) !void {
-    const svg = try generateSVG(allocator, percentage);
+pub fn saveSVG(allocator: std.mem.Allocator, filename: []const u8, percentage_fraction: f32) !void {
+    const svg = try generateSVG(allocator, percentage_fraction);
     defer allocator.free(svg);
 
     var file = try std.fs.cwd().createFile(filename, .{});
