@@ -20,6 +20,9 @@ pub fn main() !void {
     // Get current time
     const now = std.time.timestamp();
 
+    // Compute total seconds
+    const total_seconds = END_OF_TERM - START_OF_TERM;
+
     // Compute elapsed seconds
     const elapsed_seconds = now - START_OF_TERM;
 
@@ -35,4 +38,9 @@ pub fn main() !void {
     const remaining_days = @divTrunc(remaining_seconds, 86400);
 
     try stdout.print("Days till term ends: {d}\n", .{remaining_days});
+
+    // Compute percentage in seconds
+    const percentage_complete = @divTrunc((elapsed_seconds * 100), total_seconds);
+
+    try stdout.print("Percentage complete: {d}\n", .{percentage_complete});
 }
