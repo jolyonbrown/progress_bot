@@ -25,7 +25,7 @@ pub fn main() !void {
     const elapsed_seconds = now - START_OF_TERM;
     const total_term_seconds = END_OF_TERM - START_OF_TERM;
     const remaining_days = @divTrunc((END_OF_TERM - now), 86400);
-    const percentage_fraction = @floatFromInt(f32, elapsed_seconds) / @floatFromInt(f32, total_term_seconds); // 0.0 - 1.0
+    const percentage_fraction = @as(f32, @floatFromInt(elapsed_seconds)) / @as(f32, @floatFromInt(total_term_seconds));
     const percentage_complete = percentage_fraction * 100; // Human-readable 0-100%
 
     // Generate tweet text
@@ -89,7 +89,7 @@ pub fn convertSVGtoPNG(svg_file: []const u8, png_file: []const u8) !void {
 
 // Generates the tweet text
 pub fn generateTweet(allocator: std.mem.Allocator, percentage: f32, remaining_days: i32) ![]const u8 {
-    return std.fmt.allocPrint(allocator, "Presidential term is {d}% complete. {d} days remain.", .{ @as(i32, @intFromFloat(percentage)), remaining_days });
+    return std.fmt.allocPrint(allocator, "Presidential term is {d:.2}% complete. {d} days remain.", .{ @as(i32, @intFromFloat(percentage)), remaining_days });
 }
 
 // Posts the tweet with the progress bar image
