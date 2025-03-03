@@ -1,0 +1,7 @@
+<svg width="400" height="50" xmlns="http://www.w3.org/2000/svg">
+    <rect width="400" height="50" fill="black"/>
+    <rect width="380" height="30" x="10" y="10" fill="white" stroke="gray" stroke-width="2"/>
+    <rect width="10" height="30" x="10" y="10" fill="orange"/>
+    <text x="200" y="30" font-size="20" fill="black" text-anchor="middle">2%</text>
+    <title>Presidential term is 2% complete</title>
+</svg>

@@ -1,0 +1,44 @@
+name: Post Twitter Update
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # Run daily at 12:00 UTC
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  post-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Set up Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.11.0
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev perl
+        
+      - name: Create .env file
+        run: |
+          echo "TWITTER_API_KEY=${{ secrets.TWITTER_API_KEY }}" > .env
+          echo "TWITTER_API_SECRET=${{ secrets.TWITTER_API_SECRET }}" >> .env
+          echo "TWITTER_ACCESS_TOKEN=${{ secrets.TWITTER_ACCESS_TOKEN }}" >> .env
+          echo "TWITTER_ACCESS_SECRET=${{ secrets.TWITTER_ACCESS_SECRET }}" >> .env
+          chmod 600 .env
+        
+      - name: Make scripts executable
+        run: |
+          chmod +x run_bot.sh post_tweet.sh
+        
+      - name: Run bot
+        run: ./run_bot.sh
+        
+      - name: Upload progress update as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: progress-update
+          path: progress_update.txt 

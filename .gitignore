@@ -1,6 +1,29 @@
 # Zig build artifacts
 zig-cache/
 zig-out/
+main
+*.o
+
+# Generated files
+temp_file_*.txt
+
+# Credentials and environment variables
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
 
 # Executables and libraries
 *.exe
@@ -25,15 +48,11 @@ deps/
 # Documentation build output (optional)
 docs/
 
+# Object files
+*.o
+
 # Executables
 *
 !*/
 !*.*
-
-# Object files
-*.o
-
-# Image files
-*.png
-*.svg
 

@@ -1,6 +1,5 @@
-//! By convention, main.zig is where your main function lives in the case that
-//! you are building an executable. If you are making a library, the convention
-//! is to delete this file and start with root.zig instead.
+// Presidential Term Progress Bot
+// Calculates how long the current US presidency has to run and provides updates with a progress bar.
 
 // date -d "2025-01-20 17:00:00 UTC" +%s
 // 1737392400
@@ -9,9 +8,48 @@
 
 const std = @import("std");
 
+// Twitter API credentials will be loaded from environment variables
+// Set these before running the program:
+// export TWITTER_API_KEY="your_api_key"
+// export TWITTER_API_SECRET="your_api_secret"
+// export TWITTER_ACCESS_TOKEN="your_access_token"
+// export TWITTER_ACCESS_SECRET="your_access_secret"
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
+
+    // Load Twitter API credentials from environment variables
+    std.debug.print("Loading Twitter API credentials from environment variables...\n", .{});
+    
+    const api_key = std.process.getEnvVarOwned(allocator, "TWITTER_API_KEY") catch |err| blk: {
+        std.debug.print("Failed to get TWITTER_API_KEY: {s}\n", .{@errorName(err)});
+        break :blk null;
+    };
+    const api_secret = std.process.getEnvVarOwned(allocator, "TWITTER_API_SECRET") catch |err| blk: {
+        std.debug.print("Failed to get TWITTER_API_SECRET: {s}\n", .{@errorName(err)});
+        break :blk null;
+    };
+    const access_token = std.process.getEnvVarOwned(allocator, "TWITTER_ACCESS_TOKEN") catch |err| blk: {
+        std.debug.print("Failed to get TWITTER_ACCESS_TOKEN: {s}\n", .{@errorName(err)});
+        break :blk null;
+    };
+    const access_secret = std.process.getEnvVarOwned(allocator, "TWITTER_ACCESS_SECRET") catch |err| blk: {
+        std.debug.print("Failed to get TWITTER_ACCESS_SECRET: {s}\n", .{@errorName(err)});
+        break :blk null;
+    };
+    
+    defer if (api_key) |v| allocator.free(v);
+    defer if (api_secret) |v| allocator.free(v);
+    defer if (access_token) |v| allocator.free(v);
+    defer if (access_secret) |v| allocator.free(v);
+
+    // Print status of environment variables
+    std.debug.print("Environment variables status:\n", .{});
+    std.debug.print("  TWITTER_API_KEY: {s}\n", .{if (api_key != null) "Set" else "Not set"});
+    std.debug.print("  TWITTER_API_SECRET: {s}\n", .{if (api_secret != null) "Set" else "Not set"});
+    std.debug.print("  TWITTER_ACCESS_TOKEN: {s}\n", .{if (access_token != null) "Set" else "Not set"});
+    std.debug.print("  TWITTER_ACCESS_SECRET: {s}\n", .{if (access_secret != null) "Set" else "Not set"});
 
     const START_OF_TERM: i64 = 1737354000; // Jan 20, 2025, 12:00 PM ET (UTC)
     const END_OF_TERM: i64 = 1863622800; // Jan 20, 2029, 12:00 PM ET (UTC)
@@ -28,72 +66,149 @@ pub fn main() !void {
     const percentage_fraction = @as(f32, @floatFromInt(elapsed_seconds)) / @as(f32, @floatFromInt(total_term_seconds));
     const percentage_complete = percentage_fraction * 100; // Human-readable 0-100%
 
-    // Generate tweet text
-    const tweet_text = try generateTweet(allocator, percentage_complete, @as(i32, @intCast(remaining_days)));
+    // Generate tweet text with the new format
+    const tweet_text = try generateTweetText(allocator, percentage_complete, @as(i32, @intCast(remaining_days)));
     defer allocator.free(tweet_text);
+    
+    // Generate ASCII progress bar for display only
+    const progress_bar = try generateAsciiBar(allocator, percentage_fraction);
+    defer allocator.free(progress_bar);
 
-    // Generate and save SVG
-    try saveSVG(allocator, "progress.svg", percentage_fraction);
-
-    // Convert SVG to PNG (requires external tool like rsvg-convert or Inkscape)
-    try convertSVGtoPNG("progress.svg", "progress.png");
-
-    // Post to Twitter
-    try postToTwitter(tweet_text, "progress.png");
-
-    std.debug.print("Percentage: {d}%\n", .{@as(i32, @intFromFloat(percentage_complete))});
-    std.debug.print("Bar width: {d}px\n", .{@as(i32, @intFromFloat(percentage_complete * 380.0))});
-}
-
-// Generates the SVG progress bar dynamically
-pub fn generateSVG(allocator: std.mem.Allocator, percentage_fraction: f32) ![]const u8 {
-    const bar_width = @as(i32, @intFromFloat(percentage_fraction * 380.0)); // Now correctly scaled
-
-    return std.fmt.allocPrint(allocator, "<svg width=\"400\" height=\"50\" xmlns=\"http://www.w3.org/2000/svg\">\n" ++
-        "    <rect width=\"400\" height=\"50\" fill=\"black\"/>\n" ++
-        "    <rect width=\"380\" height=\"30\" x=\"10\" y=\"10\" fill=\"white\" stroke=\"gray\" stroke-width=\"2\"/>\n" ++
-        "    <rect width=\"{d}\" height=\"30\" x=\"10\" y=\"10\" fill=\"orange\"/>\n" ++
-        "    <text x=\"200\" y=\"30\" font-size=\"20\" fill=\"black\" text-anchor=\"middle\">{d}%</text>\n" ++
-        "    <title>Presidential term is {d}% complete</title>\n" ++
-        "</svg>\n", .{
-        bar_width, // Now correctly scales with 0.0-1.0 input
-        @as(i32, @intFromFloat(percentage_fraction * 100)), // Text inside progress bar
-        @as(i32, @intFromFloat(percentage_fraction * 100)), // Title accessibility text
-    });
-}
-
-// Saves the SVG to a file
-pub fn saveSVG(allocator: std.mem.Allocator, filename: []const u8, percentage_fraction: f32) !void {
-    const svg = try generateSVG(allocator, percentage_fraction);
-    defer allocator.free(svg);
-
-    var file = try std.fs.cwd().createFile(filename, .{});
-    defer file.close();
-    try file.writeAll(svg);
-}
-
-// Converts SVG to PNG using rsvg-convert (can use Inkscape as well)
-pub fn convertSVGtoPNG(svg_file: []const u8, png_file: []const u8) !void {
-    var child = std.process.Child.init(&[_][]const u8{
-        "rsvg-convert", "-o", png_file, svg_file,
-    }, std.heap.page_allocator);
-
-    try child.spawn(); // Start the process
-
-    const term = try child.wait(); // Wait for it to finish
-    if (term != .Exited or term.Exited != 0) {
-        std.debug.print("SVG conversion process failed.\n", .{});
-        return error.ConversionFailed;
+    // Display the progress information locally
+    std.debug.print("\n=== Presidential Term Progress ===\n", .{});
+    std.debug.print("{s}\n", .{tweet_text});
+    std.debug.print("{s}\n", .{progress_bar});
+    std.debug.print("Percentage: {d:.1}%\n", .{percentage_complete});
+    std.debug.print("================================\n\n", .{});
+    
+    // Save the progress information to a file for potential use with other services
+    try saveProgressToFile(tweet_text, "progress_update.txt");
+    std.debug.print("Progress information saved to progress_update.txt\n", .{});
+    
+    // Check if we have all the required credentials for Twitter posting
+    const has_all_credentials = (api_key != null and api_secret != null and 
+                                access_token != null and access_secret != null);
+    
+    if (has_all_credentials) {
+        std.debug.print("\nTwitter API credentials are set. Would you like to post to Twitter? (y/n): ", .{});
+        
+        // Read user input
+        const stdin = std.io.getStdIn().reader();
+        var buf: [10]u8 = undefined;
+        const input = try stdin.readUntilDelimiterOrEof(&buf, '\n');
+        
+        if (input != null and (input.?[0] == 'y' or input.?[0] == 'Y')) {
+            std.debug.print("Attempting to post to Twitter using the post_tweet.sh script...\n", .{});
+            
+            // Use the post_tweet.sh script to post the tweet
+            const result = try postTweetWithScript(allocator);
+            
+            if (result == 0) {
+                std.debug.print("Tweet posted successfully!\n", .{});
+            } else {
+                std.debug.print("Failed to post tweet using the script. Exit code: {d}\n", .{result});
+            }
+        } else {
+            std.debug.print("Not posting to Twitter. You can:\n", .{});
+            std.debug.print("1. Copy the text above and post manually\n", .{});
+            std.debug.print("2. Use a third-party service like IFTTT or Zapier\n\n", .{});
+        }
+    } else {
+        std.debug.print("\nTwitter API credentials are not fully set. To post to Twitter, set up your credentials.\n", .{});
+        std.debug.print("See the README for more information.\n\n", .{});
     }
 }
 
-// Generates the tweet text
-pub fn generateTweet(allocator: std.mem.Allocator, percentage: f32, remaining_days: i32) ![]const u8 {
-    return std.fmt.allocPrint(allocator, "Presidential term is {d:.2}% complete. {d} days remain.", .{ @as(i32, @intFromFloat(percentage)), remaining_days });
+// Saves the progress information to a file
+pub fn saveProgressToFile(text: []const u8, filename: []const u8) !void {
+    var file = try std.fs.cwd().createFile(filename, .{});
+    defer file.close();
+    try file.writeAll(text);
 }
 
-// Posts the tweet with the progress bar image
-pub fn postToTwitter(tweet: []const u8, image_file: []const u8) !void {
-    // TODO: Implement Twitter API authentication & upload logic
-    std.debug.print("Tweet: {s}\nImage: {s}\n", .{ tweet, image_file });
+// Generates the tweet text with the new format
+pub fn generateTweetText(allocator: std.mem.Allocator, percentage: f32, remaining_days: i32) ![]const u8 {
+    // Create a Unicode progress bar
+    const bar_length = 30; // Increased from 24 to 30 for a wider bar
+    const percentage_fraction = percentage / 100.0;
+    var filled_length = @as(usize, @intFromFloat(percentage_fraction * @as(f32, @floatFromInt(bar_length))));
+    
+    // Ensure at least one block is filled if percentage is greater than 0
+    if (percentage > 0 and filled_length == 0) {
+        filled_length = 1;
+    }
+    
+    var progress_bar = try allocator.alloc(u8, bar_length * 3 + 1); // Each Unicode character is 3 bytes
+    defer allocator.free(progress_bar);
+    
+    var pos: usize = 0;
+    var i: usize = 0;
+    while (i < bar_length) : (i += 1) {
+        if (i < filled_length) {
+            // Full block █ (U+2588)
+            progress_bar[pos] = 0xE2; pos += 1;
+            progress_bar[pos] = 0x96; pos += 1;
+            progress_bar[pos] = 0x88; pos += 1;
+        } else {
+            // Light shade ░ (U+2591)
+            progress_bar[pos] = 0xE2; pos += 1;
+            progress_bar[pos] = 0x96; pos += 1;
+            progress_bar[pos] = 0x91; pos += 1;
+        }
+    }
+    progress_bar[pos] = 0; // Null terminator
+    
+    // Format: "The Trump Presidency is X% complete. YYYY days remain."
+    // Add the Unicode progress bar with percentage on a new line
+    return std.fmt.allocPrint(allocator, 
+        "The Trump Presidency is {d:.1}% complete. {d} days remain.\n{s} {d:.1}%", 
+        .{ 
+            percentage, 
+            remaining_days,
+            progress_bar[0..pos],
+            percentage
+        }
+    );
+}
+
+// Generates an ASCII progress bar for display
+pub fn generateAsciiBar(allocator: std.mem.Allocator, percentage_fraction: f32) ![]const u8 {
+    // Create an improved ASCII progress bar with 20 characters
+    const bar_length = 20;
+    const filled_length = @as(usize, @intFromFloat(percentage_fraction * @as(f32, @floatFromInt(bar_length))));
+    
+    var progress_bar = try allocator.alloc(u8, bar_length + 2); // +2 for [ and ]
+    defer allocator.free(progress_bar);
+    
+    progress_bar[0] = '[';
+    
+    var i: usize = 0;
+    while (i < bar_length) : (i += 1) {
+        if (i < filled_length) {
+            progress_bar[i + 1] = '='; // Equals sign for filled portion
+        } else if (i == filled_length and filled_length > 0 and filled_length < bar_length) {
+            progress_bar[i + 1] = '>'; // Arrow for the current position
+        } else {
+            progress_bar[i + 1] = ' '; // Space for empty portion for better contrast
+        }
+    }
+    
+    progress_bar[bar_length + 1] = ']';
+    
+    return std.fmt.allocPrint(allocator, "{s}", .{progress_bar});
+}
+
+// Function to post a tweet using the post_tweet.sh script
+pub fn postTweetWithScript(allocator: std.mem.Allocator) !i32 {
+    var child = std.process.Child.init(&[_][]const u8{"./post_tweet.sh"}, allocator);
+    child.stderr_behavior = .Inherit;
+    child.stdout_behavior = .Inherit;
+    
+    try child.spawn();
+    const result = try child.wait();
+    
+    return switch (result) {
+        .Exited => |code| code,
+        else => -1,
+    };
 }
