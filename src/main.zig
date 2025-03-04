@@ -128,51 +128,101 @@ pub fn saveProgressToFile(text: []const u8, filename: []const u8) !void {
 
 // Generates the tweet text with the new format
 pub fn generateTweetText(allocator: std.mem.Allocator, percentage: f32, remaining_days: i32) ![]const u8 {
-    // Create a progress bar with emoji
-    const bar_length = 30; // Increased length to 30 characters for better precision
-    const percentage_fraction = percentage / 100.0;
+    // Calculate the basic text summary
+    const summary_text = try std.fmt.allocPrint(allocator, 
+        "The Trump Presidency is {d:.1}% complete. {d} days remain.", 
+        .{ percentage, remaining_days }
+    );
+    defer allocator.free(summary_text);
     
-    // Calculate filled length more precisely
-    var filled_length = @as(usize, @intFromFloat(percentage_fraction * @as(f32, @floatFromInt(bar_length))));
+    // Create a GitHub-style grid visualization
+    // 4 rows (years) x 12 columns (months) from inauguration to inauguration
+    const rows = 4;
+    const cols = 12;
     
-    // For very small percentages, we'll use a special indicator
-    var use_partial_indicator = false;
-    if (percentage > 0 and percentage < 3.0) {
-        filled_length = 0; // No full blocks
-        use_partial_indicator = true; // But we'll use a special indicator for the first block
+    // Calculate how many months have fully passed since the start of the term
+    const START_OF_TERM: i64 = 1737354000; // Jan 20, 2025, 12:00 PM ET (UTC)
+    const END_OF_TERM: i64 = 1863622800; // Jan 20, 2029, 12:00 PM ET (UTC)
+    const now = std.time.timestamp();
+    const seconds_elapsed = now - START_OF_TERM;
+    
+    // For testing/development purposes, we need to handle the case where now < START_OF_TERM
+    // In the real bot, this would be caught by the check in main()
+    var adjusted_seconds_elapsed = seconds_elapsed;
+    if (adjusted_seconds_elapsed < 0) {
+        // For testing before the term starts, pretend we're a small percentage into the term
+        adjusted_seconds_elapsed = @divTrunc(END_OF_TERM - START_OF_TERM, 34); // ~2.9% of the term
     }
     
-    // Create the progress bar with a special first block if needed
-    var progress_text = std.ArrayList(u8).init(allocator);
-    defer progress_text.deinit();
+    // Each "month" is approximately 30.44 days (365.25/12)
+    const seconds_per_month = 2630016; // 30.44 days in seconds
+    const months_elapsed_f = @as(f32, @floatFromInt(adjusted_seconds_elapsed)) / @as(f32, @floatFromInt(seconds_per_month));
     
-    // Add filled blocks if any
-    var i: usize = 0;
-    while (i < filled_length) : (i += 1) {
-        try progress_text.appendSlice("🟧"); // Orange square for filled portion
+    // Calculate the number of fully completed months and progress in the current month
+    // Color progression for the current month:
+    // 🟫 Brown: 0-25% complete
+    // 🟧 Orange: 26-50% complete
+    // 🟨 Yellow: 51-75% complete
+    // 🟩 Green: 76-100% complete (also used for fully completed months)
+    // ⬛ Black: Future months
+    var full_months_elapsed: usize = 0;
+    var current_month_progress: f32 = 0.0;
+    
+    if (percentage < 3.0) {
+        // Special case for very early in the term (like 2.9%)
+        // Show no completed months and the first month in progress
+        full_months_elapsed = 0;
+        // Set progress to 20% to ensure it shows as brown (0-25% range)
+        current_month_progress = 0.2;
+    } else {
+        // Normal calculation for larger percentages
+        full_months_elapsed = @as(usize, @intFromFloat(months_elapsed_f));
+        current_month_progress = months_elapsed_f - @as(f32, @floatFromInt(full_months_elapsed));
     }
     
-    // Add the partial indicator if needed
-    if (use_partial_indicator) {
-        try progress_text.appendSlice("🟧"); // Orange square for partial progress (changed from circle)
-    }
+    // Create the grid visualization
+    var grid_text = std.ArrayList(u8).init(allocator);
+    defer grid_text.deinit();
     
-    // Add the remaining empty blocks
-    i = filled_length + (if (use_partial_indicator) @as(usize, 1) else @as(usize, 0));
-    while (i < bar_length) : (i += 1) {
-        try progress_text.appendSlice("⬛"); // Grey/black square for empty portion
-    }
+    // Add a newline after the summary
+    try grid_text.appendSlice("\n\n");
     
-    // Format: "The Trump Presidency is X% complete. YYYY days remain."
-    // Add the emoji progress bar with percentage on a new line
-    return std.fmt.allocPrint(allocator, 
-        "The Trump Presidency is {d:.1}% complete. {d} days remain.\n{s} {d:.1}%", 
-        .{ 
-            percentage, 
-            remaining_days,
-            progress_text.items,
-            percentage
+    // Generate the grid
+    var total_months: usize = 0;
+    
+    for (0..rows) |row| {
+        for (0..cols) |_| {
+            if (total_months < full_months_elapsed) {
+                // Fully completed month - always green
+                try grid_text.appendSlice("🟩");
+            } else if (total_months == full_months_elapsed) {
+                // Current month in progress - color based on completion percentage
+                if (current_month_progress < 0.25) {
+                    try grid_text.appendSlice("🟫"); // 0-25% complete - brown
+                } else if (current_month_progress < 0.5) {
+                    try grid_text.appendSlice("🟧"); // 26-50% complete - orange
+                } else if (current_month_progress < 0.75) {
+                    try grid_text.appendSlice("🟨"); // 51-75% complete - yellow
+                } else {
+                    try grid_text.appendSlice("🟩"); // 76-100% complete - green
+                }
+            } else {
+                // Future month - always black
+                try grid_text.appendSlice("⬛");
+            }
+            total_months += 1;
         }
+        
+        // Add a newline after each row except the last one
+        if (row < rows - 1) {
+            try grid_text.appendSlice("\n");
+        }
+    }
+    
+    // Combine the summary and grid
+    return std.fmt.allocPrint(allocator, 
+        "{s}{s}", 
+        .{ summary_text, grid_text.items }
     );
 }
 
