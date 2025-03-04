@@ -128,44 +128,49 @@ pub fn saveProgressToFile(text: []const u8, filename: []const u8) !void {
 
 // Generates the tweet text with the new format
 pub fn generateTweetText(allocator: std.mem.Allocator, percentage: f32, remaining_days: i32) ![]const u8 {
-    // Create a Unicode progress bar
-    const bar_length = 30; // Increased from 24 to 30 for a wider bar
+    // Create a progress bar with emoji
+    const bar_length = 30; // Increased length to 30 characters for better precision
     const percentage_fraction = percentage / 100.0;
+    
+    // Calculate filled length more precisely
     var filled_length = @as(usize, @intFromFloat(percentage_fraction * @as(f32, @floatFromInt(bar_length))));
     
-    // Ensure at least one block is filled if percentage is greater than 0
-    if (percentage > 0 and filled_length == 0) {
-        filled_length = 1;
+    // For very small percentages, we'll use a special indicator
+    var use_partial_indicator = false;
+    if (percentage > 0 and percentage < 3.0) {
+        filled_length = 0; // No full blocks
+        use_partial_indicator = true; // But we'll use a special indicator for the first block
     }
     
-    var progress_bar = try allocator.alloc(u8, bar_length * 3 + 1); // Each Unicode character is 3 bytes
-    defer allocator.free(progress_bar);
+    // Create the progress bar with a special first block if needed
+    var progress_text = std.ArrayList(u8).init(allocator);
+    defer progress_text.deinit();
     
-    var pos: usize = 0;
+    // Add filled blocks if any
     var i: usize = 0;
-    while (i < bar_length) : (i += 1) {
-        if (i < filled_length) {
-            // Full block █ (U+2588)
-            progress_bar[pos] = 0xE2; pos += 1;
-            progress_bar[pos] = 0x96; pos += 1;
-            progress_bar[pos] = 0x88; pos += 1;
-        } else {
-            // Light shade ░ (U+2591)
-            progress_bar[pos] = 0xE2; pos += 1;
-            progress_bar[pos] = 0x96; pos += 1;
-            progress_bar[pos] = 0x91; pos += 1;
-        }
+    while (i < filled_length) : (i += 1) {
+        try progress_text.appendSlice("🟧"); // Orange square for filled portion
     }
-    progress_bar[pos] = 0; // Null terminator
+    
+    // Add the partial indicator if needed
+    if (use_partial_indicator) {
+        try progress_text.appendSlice("🟧"); // Orange square for partial progress (changed from circle)
+    }
+    
+    // Add the remaining empty blocks
+    i = filled_length + (if (use_partial_indicator) @as(usize, 1) else @as(usize, 0));
+    while (i < bar_length) : (i += 1) {
+        try progress_text.appendSlice("⬛"); // Grey/black square for empty portion
+    }
     
     // Format: "The Trump Presidency is X% complete. YYYY days remain."
-    // Add the Unicode progress bar with percentage on a new line
+    // Add the emoji progress bar with percentage on a new line
     return std.fmt.allocPrint(allocator, 
         "The Trump Presidency is {d:.1}% complete. {d} days remain.\n{s} {d:.1}%", 
         .{ 
             percentage, 
             remaining_days,
-            progress_bar[0..pos],
+            progress_text.items,
             percentage
         }
     );
