@@ -1,21 +1,23 @@
 # Presidential Term Progress Bot
 
-A Twitter/X.com bot that calculates how long the current US presidency has to run in terms of days and provides updates with a progress bar.
+A Bluesky bot that calculates how long the current US presidency has to run in terms of days and provides updates with a visual progress grid.
 
 ## Features
 
 - Calculates the percentage of the presidential term that has elapsed
-- Generates a text-based ASCII progress bar
-- Provides updates with the progress information
-- Posts directly to Twitter/X using a shell script with OAuth 1.0a
+- Generates a GitHub-style emoji progress grid (4x12 months)
+- Auto-generates surreal daily messages using Groq AI (with fallback)
+- Posts directly to Bluesky using AT Protocol API
+- Fully automated posting via GitHub Actions
 
 ## Prerequisites
 
 - Zig compiler (tested with version 0.11.0 or later)
 - Bash shell
-- Perl with URI::Escape module (for URL encoding in the posting script)
-- OpenSSL (for generating OAuth signatures)
-- Twitter/X.com Developer Account (for posting to Twitter)
+- curl (for HTTP requests to Bluesky and Groq APIs)
+- jq (for JSON parsing in scripts)
+- Bluesky account with App Password
+- Groq account with API key (optional, for AI-generated messages)
 
 ## Installation
 
@@ -29,27 +31,26 @@ A Twitter/X.com bot that calculates how long the current US presidency has to ru
 
 ## Setup
 
-1. Set up your Twitter/X.com Developer Account:
-   - Go to [Twitter Developer Portal](https://developer.twitter.com/)
-   - Sign up for a developer account if you don't have one
-   - Create a new Project and App in the developer portal
-   - Set up User Authentication Settings:
-     - Select "Read and Write" permissions
-     - Set the App type to "Web App, Automated App or Bot"
-     - Set the callback URL and website URL (can be your GitHub profile)
-   - Generate API keys and tokens:
-     - Save the API Key and API Key Secret
-     - Generate Access Token and Access Token Secret
+1. Set up your Bluesky account:
+   - Create a Bluesky account at [bsky.app](https://bsky.app)
+   - Go to Settings → App Passwords
+   - Generate a new App Password for this bot
+   - Save your handle and app password securely
 
-2. Set up your Twitter API credentials using a `.env` file:
+2. Set up your API credentials using a `.env` file:
    - Copy the `.env.example` file to `.env`
    - Fill in your credentials in the `.env` file:
    ```
-   TWITTER_API_KEY=your_api_key
-   TWITTER_API_SECRET=your_api_secret
-   TWITTER_ACCESS_TOKEN=your_access_token
-   TWITTER_ACCESS_SECRET=your_access_secret
+   BLUESKY_HANDLE=your_handle.bsky.social
+   BLUESKY_APP_PASSWORD=your_app_password
+   GROQ_API_KEY=your_groq_api_key
    ```
+
+3. Set up your Groq account (optional but recommended):
+   - Sign up at [Groq Console](https://console.groq.com/)
+   - Generate an API key in your dashboard
+   - Add it to your `.env` file as shown above
+   - Without this key, the bot will use a simple fallback message
 
 ## Usage
 
@@ -60,15 +61,16 @@ Run the bot with:
 ```
 
 This will:
-1. Load your Twitter API credentials from the `.env` file
+1. Load your API credentials from the `.env` file
 2. Calculate the current progress of the presidential term
-3. Generate a text-based ASCII progress bar
-4. Save the progress information to `progress_update.txt`
-5. Ask if you want to post to Twitter
+3. Generate a GitHub-style emoji progress grid
+4. Generate a surreal message using Groq AI (or use fallback)
+5. Save the progress information to `progress_update.txt`
+6. Ask if you want to post to Bluesky
 
-If you choose to post to Twitter, the script will:
-1. Generate the necessary OAuth 1.0a signature
-2. Post the tweet using the Twitter API v2
+If you choose to post to Bluesky, the script will:
+1. Authenticate with Bluesky using your App Password
+2. Create a post using the AT Protocol API
 3. Handle any errors or duplicate content issues
 
 ## How It Works
@@ -76,24 +78,47 @@ If you choose to post to Twitter, the script will:
 ### Core Components
 
 1. **Zig Application (`src/main.zig`)**:
-   - Calculates the presidential term progress
-   - Generates the ASCII progress bar
+   - Calculates the presidential term progress (Jan 20, 2025 - Jan 20, 2029)
+   - Generates the emoji grid visualization (4 years × 12 months)
+   - Calls Groq API to generate contextual surreal messages
    - Saves the progress to a file
    - Calls the posting script if requested
 
-2. **Posting Script (`post_tweet.sh`)**:
-   - Implements OAuth 1.0a authentication
-   - Handles the Twitter API v2 interaction
-   - Posts the tweet with proper error handling
+2. **Posting Script (`post_bluesky.sh`)**:
+   - Authenticates with Bluesky using AT Protocol
+   - Creates session tokens via `com.atproto.server.createSession`
+   - Posts content using `com.atproto.repo.createRecord`
+   - Handles errors and API responses
 
-### Twitter API Integration
+3. **AI Message Generator (`generate_surreal_message.sh`)**:
+   - Uses Groq's fast LLM inference to generate contextual surreal messages
+   - Takes percentage, days remaining, and time of day as context
+   - Falls back to simple hashtag if API unavailable
+   - Generates darkly humorous, absurdist commentary
 
-The bot uses the Twitter API v2 endpoint for posting tweets. The OAuth 1.0a implementation in the shell script:
+### Bluesky AT Protocol Integration
 
-1. Generates a unique nonce and timestamp
-2. Creates the OAuth signature using HMAC-SHA1
-3. Constructs the Authorization header
-4. Posts the tweet with proper JSON formatting
+The bot uses the AT Protocol (Authenticated Transfer Protocol) for posting to Bluesky:
+
+1. Authenticates with handle and App Password to get session tokens
+2. Uses the access JWT token for authenticated requests
+3. Creates post records with proper timestamps and formatting
+4. Handles the decentralized nature of the AT Protocol
+
+### AI-Generated Surreal Messages
+
+The bot uses Groq's fast inference API to generate contextual surreal messages:
+
+1. **Dynamic Content**: Each post includes a unique AI-generated surreal message
+2. **Context Awareness**: The AI considers percentage complete, days remaining, and time of day
+3. **Tone Control**: Prompts guide the AI to create darkly humorous, absurdist political commentary
+4. **Fallback Safety**: If Groq API is unavailable, falls back to simple hashtag
+5. **Cost Effective**: Uses Groq's efficient LLM inference for minimal API costs
+
+Example AI-generated messages:
+- "The democracy hourglass leaks sand made of tweets #TimeIsFlat"
+- "In the quantum realm, presidential terms exist in superposition #SchroedingersPOTUS"
+- "The calendar pages turn like slow-motion confetti at a funeral #TemporalPolitics"
 
 ## Securely Managing Credentials
 
@@ -105,10 +130,9 @@ Create a `.env` file with your credentials:
 
 ```
 # IMPORTANT: Do not use quotes or spaces around equals signs
-TWITTER_API_KEY=your_api_key
-TWITTER_API_SECRET=your_api_secret
-TWITTER_ACCESS_TOKEN=your_access_token
-TWITTER_ACCESS_SECRET=your_access_secret
+BLUESKY_HANDLE=your_handle.bsky.social
+BLUESKY_APP_PASSWORD=your_app_password
+GROQ_API_KEY=your_groq_api_key
 ```
 
 Make sure to add `.env` to your `.gitignore` file:
@@ -159,25 +183,28 @@ To run this bot automatically on a schedule:
 
 ### Authentication Issues
 
-If you encounter authentication issues when trying to post to Twitter, here are some steps to troubleshoot:
+If you encounter authentication issues when trying to post to Bluesky, here are some steps to troubleshoot:
 
-1. **Check your Twitter API credentials**:
-   - Ensure that your Twitter API key, API secret, access token, and access token secret are correct.
-   - Verify that your Twitter Developer App has the necessary permissions to post tweets.
-   - Make sure your app has "Read and Write" permissions in the Twitter Developer Portal.
+1. **Check your Bluesky credentials**:
+   - Ensure that your Bluesky handle and App Password are correct
+   - Make sure your handle includes the full domain (e.g., `username.bsky.social`)
+   - Verify that your App Password is active and hasn't been revoked
 
 2. **Common Error Messages**:
-   - `401 Unauthorized` with message `"Could not authenticate you"`: This usually indicates an issue with your OAuth 1.0a credentials or signature generation.
-   - `403 Forbidden` with message about "Unsupported Authentication": This indicates you're using the wrong authentication method for the endpoint.
-   - `403 Forbidden` with message about "duplicate content": This means you're trying to post the same tweet text again, which Twitter doesn't allow.
+   - `401 Unauthorized`: Usually indicates incorrect handle or App Password
+   - `403 Forbidden`: May indicate rate limiting or account restrictions
+   - Connection errors: Check your internet connection and Bluesky service status
 
-3. **API Rate Limits**:
-   - Twitter has rate limits on its API. If you exceed these limits, you may receive a `429 Too Many Requests` error.
+3. **App Password Issues**:
+   - App Passwords are different from your regular account password
+   - Generate a new App Password in Bluesky Settings → App Passwords
+   - Each App Password should be unique for different applications
 
-4. **Check App Status**:
-   - Ensure your Twitter Developer App is active and not suspended.
+4. **Rate Limits**:
+   - Bluesky has rate limits to prevent spam
+   - If posting fails due to rate limits, wait a few minutes and try again
 
-If you continue to experience issues, you may need to regenerate your Twitter API credentials in the Twitter Developer Portal.
+If you continue to experience issues, check the [Bluesky Support](https://blueskyweb.xyz/support) or regenerate your App Password.
 
 ## License
 
