@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.bsky.app)",
+      "Bash(zig version:*)",
+      "Bash(zig build)",
+      "WebFetch(domain:console.groq.com)",
+      "Bash(./generate_surreal_message.sh:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
