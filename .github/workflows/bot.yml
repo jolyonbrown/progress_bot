@@ -1,0 +1,49 @@
+name: Presidential Progress Bot
+
+on:
+  schedule:
+    # Run twice daily: 9:00 AM and 6:00 PM UTC
+    - cron: '0 9 * * *'
+    - cron: '0 18 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  post-update:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.14.0
+        
+    - name: Make scripts executable
+      run: |
+        chmod +x run_bot.sh
+        chmod +x post_bluesky.sh
+        chmod +x generate_surreal_message.sh
+        
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl jq
+        
+    - name: Build and run bot
+      env:
+        BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+        BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      run: |
+        # Export environment variables for the bot
+        export BLUESKY_HANDLE="${BLUESKY_HANDLE}"
+        export BLUESKY_APP_PASSWORD="${BLUESKY_APP_PASSWORD}"
+        export GROQ_API_KEY="${GROQ_API_KEY}"
+        
+        # Build the bot
+        zig build
+        
+        # Run the bot with automatic posting (simulating 'y' input)
+        echo "y" | zig build run
