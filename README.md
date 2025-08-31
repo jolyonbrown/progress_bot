@@ -8,7 +8,7 @@ A Bluesky bot that calculates how long the current US presidency has to run in t
 - Generates a GitHub-style emoji progress grid (4x12 months)
 - Auto-generates surreal daily messages using Groq AI (with fallback)
 - Posts directly to Bluesky using AT Protocol API
-- Fully automated posting via GitHub Actions
+- Fully automated posting via GitHub Actions (twice daily at 9 AM & 6 PM UTC)
 
 ## Prerequisites
 
