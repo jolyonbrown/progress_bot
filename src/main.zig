@@ -79,9 +79,10 @@ pub fn main() !void {
         std.debug.print("\nBluesky API credentials are set. Would you like to post to Bluesky? (y/n): ", .{});
 
         // Read user input
-        const stdin = std.io.getStdIn().reader();
+        var stdin_buffer: [1024]u8 = undefined;
+        const stdin = std.fs.File.stdin().reader(&stdin_buffer);
         var buf: [10]u8 = undefined;
-        const input = try stdin.readUntilDelimiterOrEof(&buf, '\n');
+        const input = stdin.readAll(&buf);
 
         if (input != null and (input.?[0] == 'y' or input.?[0] == 'Y')) {
             std.debug.print("Attempting to post to Bluesky using the post_bluesky.sh script...\n", .{});
@@ -219,11 +220,11 @@ pub fn generatePostText(allocator: std.mem.Allocator, percentage: f32, remaining
     const current_month_progress = months_elapsed_f - @as(f32, @floatFromInt(full_months_elapsed));
 
     // Create the grid visualization
-    var grid_text = std.ArrayList(u8).init(allocator);
-    defer grid_text.deinit();
+    var grid_text: std.ArrayList(u8) = .{};
+    defer grid_text.deinit(allocator);
 
     // Add a newline after the summary
-    try grid_text.appendSlice("\n\n");
+    try grid_text.appendSlice(allocator, "\n\n");
 
     // Generate the grid
     var total_months: usize = 0;
@@ -232,28 +233,28 @@ pub fn generatePostText(allocator: std.mem.Allocator, percentage: f32, remaining
         for (0..cols) |_| {
             if (total_months < full_months_elapsed) {
                 // Fully completed month - always green
-                try grid_text.appendSlice("🟩");
+                try grid_text.appendSlice(allocator, "🟩");
             } else if (total_months == full_months_elapsed) {
                 // Current month in progress - color based on completion percentage
                 if (current_month_progress < 0.25) {
-                    try grid_text.appendSlice("🟫"); // 0-25% complete - brown
+                    try grid_text.appendSlice(allocator, "🟫"); // 0-25% complete - brown
                 } else if (current_month_progress < 0.5) {
-                    try grid_text.appendSlice("🟧"); // 26-50% complete - orange
+                    try grid_text.appendSlice(allocator, "🟧"); // 26-50% complete - orange
                 } else if (current_month_progress < 0.75) {
-                    try grid_text.appendSlice("🟨"); // 51-75% complete - yellow
+                    try grid_text.appendSlice(allocator, "🟨"); // 51-75% complete - yellow
                 } else {
-                    try grid_text.appendSlice("🟩"); // 76-100% complete - green
+                    try grid_text.appendSlice(allocator, "🟩"); // 76-100% complete - green
                 }
             } else {
                 // Future month - always black
-                try grid_text.appendSlice("⬛");
+                try grid_text.appendSlice(allocator, "⬛");
             }
             total_months += 1;
         }
 
         // Add a newline after each row except the last one
         if (row < rows - 1) {
-            try grid_text.appendSlice("\n");
+            try grid_text.appendSlice(allocator, "\n");
         }
     }
 
