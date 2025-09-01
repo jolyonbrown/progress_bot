@@ -10,37 +10,57 @@ on:
 jobs:
   post-update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       timeout-minutes: 2
-      
-    - name: Setup Zig
-      uses: goto-bus-stop/setup-zig@v2
-      with:
-        version: 0.15.1
-      timeout-minutes: 5
-      retry-on-failure: true
         
     - name: Make scripts executable
       run: |
-        chmod +x run_bot.sh
         chmod +x post_bluesky.sh
         chmod +x generate_surreal_message.sh
-        chmod +x auto_post_bluesky.sh
+        chmod +x progress_bot_linux
         
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y curl jq
         
-    - name: Run automated bot
+    - name: Run bot and post to Bluesky
       env:
         BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
         BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       run: |
-        # Use the automated posting script
-        ./auto_post_bluesky.sh
+        echo "=== Automated Presidential Term Progress Bot ==="
+        echo "Starting at $(date)"
+        
+        # Generate progress update using pre-compiled binary
+        echo "Generating progress update..."
+        echo "n" | ./progress_bot_linux > /dev/null 2>&1 || {
+          echo "Running binary without interactive prompt..."
+          ./progress_bot_linux < /dev/null
+        }
+        
+        # Check if progress_update.txt was created
+        if [ ! -f progress_update.txt ]; then
+          echo "Error: progress_update.txt was not created"
+          exit 1
+        fi
+        
+        echo "Progress update generated. Contents:"
+        cat progress_update.txt
+        
+        echo ""
+        echo "Posting to Bluesky..."
+        
+        # Post to Bluesky
+        if ./post_bluesky.sh; then
+          echo "✅ Successfully posted to Bluesky!"
+          echo "Completed at $(date)"
+        else
+          echo "❌ Failed to post to Bluesky"
+          exit 1
+        fi
