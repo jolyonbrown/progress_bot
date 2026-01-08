@@ -11,13 +11,13 @@ if [ -f .env ]; then
     # Explicitly export for child processes
     export BLUESKY_HANDLE
     export BLUESKY_APP_PASSWORD  
-    export GROQ_API_KEY
+    export ANTHROPIC_API_KEY
     
     # Print environment variables (redacted for security)
     echo "Environment variables after loading .env:"
     echo "BLUESKY_HANDLE set: $([ ! -z "$BLUESKY_HANDLE" ] && echo "YES" || echo "NO")"
     echo "BLUESKY_APP_PASSWORD set: $([ ! -z "$BLUESKY_APP_PASSWORD" ] && echo "YES" || echo "NO")"
-    echo "GROQ_API_KEY set: $([ ! -z "$GROQ_API_KEY" ] && echo "YES" || echo "NO")"
+    echo "ANTHROPIC_API_KEY set: $([ ! -z "$ANTHROPIC_API_KEY" ] && echo "YES" || echo "NO")"
 else
     echo "No .env file found. The bot will run without Bluesky API credentials."
     echo "Progress information will be generated locally only."

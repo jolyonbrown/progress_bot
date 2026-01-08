@@ -25,8 +25,8 @@ if [ -z "$BLUESKY_HANDLE" ] || [ -z "$BLUESKY_APP_PASSWORD" ]; then
     exit 1
 fi
 
-if [ -z "$GROQ_API_KEY" ]; then
-    echo "Warning: GROQ_API_KEY is not set. Surreal messages will use fallback."
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    echo "Warning: ANTHROPIC_API_KEY is not set. Surreal messages will use fallback."
 fi
 
 echo "Credentials found. Running bot..."

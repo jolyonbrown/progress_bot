@@ -6,18 +6,18 @@ A Bluesky bot that calculates how long the current US presidency has to run in t
 
 - Calculates the percentage of the presidential term that has elapsed
 - Generates a GitHub-style emoji progress grid (4x12 months)
-- Auto-generates surreal daily messages using Groq AI (with fallback)
+- Auto-generates surreal daily messages using Claude Haiku 4.5 (with fallback)
 - Posts directly to Bluesky using AT Protocol API
 - Fully automated posting via GitHub Actions (twice daily at 9 AM & 6 PM UTC)
 
 ## Prerequisites
 
-- Zig compiler (tested with version 0.11.0 or later)
+- Zig compiler (tested with version 0.15.1)
 - Bash shell
-- curl (for HTTP requests to Bluesky and Groq APIs)
+- curl (for HTTP requests to Bluesky and Anthropic APIs)
 - jq (for JSON parsing in scripts)
 - Bluesky account with App Password
-- Groq account with API key (optional, for AI-generated messages)
+- Anthropic account with API key (optional, for AI-generated messages)
 
 ## Installation
 
@@ -43,11 +43,11 @@ A Bluesky bot that calculates how long the current US presidency has to run in t
    ```
    BLUESKY_HANDLE=your_handle.bsky.social
    BLUESKY_APP_PASSWORD=your_app_password
-   GROQ_API_KEY=your_groq_api_key
+   ANTHROPIC_API_KEY=your_anthropic_api_key
    ```
 
-3. Set up your Groq account (optional but recommended):
-   - Sign up at [Groq Console](https://console.groq.com/)
+3. Set up your Anthropic account (optional but recommended):
+   - Sign up at [Anthropic Console](https://console.anthropic.com/)
    - Generate an API key in your dashboard
    - Add it to your `.env` file as shown above
    - Without this key, the bot will use a simple fallback message
@@ -64,7 +64,7 @@ This will:
 1. Load your API credentials from the `.env` file
 2. Calculate the current progress of the presidential term
 3. Generate a GitHub-style emoji progress grid
-4. Generate a surreal message using Groq AI (or use fallback)
+4. Generate a surreal message using Anthropic AI (or use fallback)
 5. Save the progress information to `progress_update.txt`
 6. Ask if you want to post to Bluesky
 
@@ -80,9 +80,8 @@ If you choose to post to Bluesky, the script will:
 1. **Zig Application (`src/main.zig`)**:
    - Calculates the presidential term progress (Jan 20, 2025 - Jan 20, 2029)
    - Generates the emoji grid visualization (4 years × 12 months)
-   - Calls Groq API to generate contextual surreal messages
+   - Calls Claude Haiku 4.5 API to generate contextual surreal messages
    - Saves the progress to a file
-   - Calls the posting script if requested
 
 2. **Posting Script (`post_bluesky.sh`)**:
    - Authenticates with Bluesky using AT Protocol
@@ -91,7 +90,7 @@ If you choose to post to Bluesky, the script will:
    - Handles errors and API responses
 
 3. **AI Message Generator (`generate_surreal_message.sh`)**:
-   - Uses Groq's fast LLM inference to generate contextual surreal messages
+   - Uses Claude Haiku 4.5 to generate contextual surreal messages
    - Takes percentage, days remaining, and time of day as context
    - Falls back to simple hashtag if API unavailable
    - Generates darkly humorous, absurdist commentary
@@ -107,13 +106,13 @@ The bot uses the AT Protocol (Authenticated Transfer Protocol) for posting to Bl
 
 ### AI-Generated Surreal Messages
 
-The bot uses Groq's fast inference API to generate contextual surreal messages:
+The bot uses Anthropic's Claude Haiku 4.5 API to generate contextual surreal messages:
 
 1. **Dynamic Content**: Each post includes a unique AI-generated surreal message
 2. **Context Awareness**: The AI considers percentage complete, days remaining, and time of day
 3. **Tone Control**: Prompts guide the AI to create darkly humorous, absurdist political commentary
-4. **Fallback Safety**: If Groq API is unavailable, falls back to simple hashtag
-5. **Cost Effective**: Uses Groq's efficient LLM inference for minimal API costs
+4. **Fallback Safety**: If Anthropic API is unavailable, falls back to simple hashtag
+5. **Cost Effective**: Uses Claude Haiku 4.5 for fast, cost-effective LLM inference
 
 Example AI-generated messages:
 - "The democracy hourglass leaks sand made of tweets #TimeIsFlat"
@@ -132,7 +131,7 @@ Create a `.env` file with your credentials:
 # IMPORTANT: Do not use quotes or spaces around equals signs
 BLUESKY_HANDLE=your_handle.bsky.social
 BLUESKY_APP_PASSWORD=your_app_password
-GROQ_API_KEY=your_groq_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
 
 Make sure to add `.env` to your `.gitignore` file:

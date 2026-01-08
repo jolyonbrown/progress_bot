@@ -76,30 +76,8 @@ pub fn main() !void {
     const has_all_credentials = (handle != null and app_password != null);
 
     if (has_all_credentials) {
-        std.debug.print("\nBluesky API credentials are set. Would you like to post to Bluesky? (y/n): ", .{});
-
-        // Read user input
-        var stdin_buffer: [1024]u8 = undefined;
-        const stdin = std.fs.File.stdin().reader(&stdin_buffer);
-        var buf: [10]u8 = undefined;
-        const input = stdin.readAll(&buf);
-
-        if (input != null and (input.?[0] == 'y' or input.?[0] == 'Y')) {
-            std.debug.print("Attempting to post to Bluesky using the post_bluesky.sh script...\n", .{});
-
-            // Use the post_bluesky.sh script to post
-            const result = try postBlueskyWithScript(allocator);
-
-            if (result == 0) {
-                std.debug.print("Post published successfully!\n", .{});
-            } else {
-                std.debug.print("Failed to post using the script. Exit code: {d}\n", .{result});
-            }
-        } else {
-            std.debug.print("Not posting to Bluesky. You can:\n", .{});
-            std.debug.print("1. Copy the text above and post manually\n", .{});
-            std.debug.print("2. Use the automated script later\n\n", .{});
-        }
+        std.debug.print("\nBluesky API credentials are set.\n", .{});
+        std.debug.print("Run ./post_bluesky.sh to post the update to Bluesky.\n", .{});
     } else {
         std.debug.print("\nBluesky API credentials are not fully set. To post to Bluesky, set up your credentials.\n", .{});
         std.debug.print("See the README for more information.\n\n", .{});
@@ -113,9 +91,9 @@ pub fn saveProgressToFile(text: []const u8, filename: []const u8) !void {
     try file.writeAll(text);
 }
 
-// Generates a surreal message using Groq API
+// Generates a surreal message using Anthropic API (Claude Haiku 4.5)
 pub fn generateSurrealMessage(allocator: std.mem.Allocator, percentage: f32, remaining_days: i32) ![]const u8 {
-    std.debug.print("Generating surreal message using Groq API...\n", .{});
+    std.debug.print("Generating surreal message using Anthropic API...\n", .{});
 
     // Determine time of day for context
     const now = std.time.timestamp();
@@ -165,7 +143,7 @@ pub fn generateSurrealMessage(allocator: std.mem.Allocator, percentage: f32, rem
                     std.debug.print("Generated message: {s}\n", .{trimmed});
                     return try allocator.dupe(u8, trimmed);
                 } else {
-                    std.debug.print("Empty response from Groq API, using fallback\n", .{});
+                    std.debug.print("Empty response from Anthropic API, using fallback\n", .{});
                     return try allocator.dupe(u8, "#Trump");
                 }
             } else {
@@ -258,7 +236,7 @@ pub fn generatePostText(allocator: std.mem.Allocator, percentage: f32, remaining
         }
     }
 
-    // Generate the surreal message using Groq API
+    // Generate the surreal message using Anthropic API
     const surreal_line = try generateSurrealMessage(allocator, percentage, remaining_days);
     defer allocator.free(surreal_line);
 
@@ -293,17 +271,3 @@ pub fn generateAsciiBar(allocator: std.mem.Allocator, percentage_fraction: f32) 
     return std.fmt.allocPrint(allocator, "{s}", .{progress_bar});
 }
 
-// Function to post to Bluesky using the post_bluesky.sh script
-pub fn postBlueskyWithScript(allocator: std.mem.Allocator) !i32 {
-    var child = std.process.Child.init(&[_][]const u8{"./post_bluesky.sh"}, allocator);
-    child.stderr_behavior = .Inherit;
-    child.stdout_behavior = .Inherit;
-
-    try child.spawn();
-    const result = try child.wait();
-
-    return switch (result) {
-        .Exited => |code| code,
-        else => -1,
-    };
-}
