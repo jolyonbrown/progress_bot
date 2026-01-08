@@ -23,7 +23,8 @@ if [ -z "$PERCENTAGE" ] || [ -z "$DAYS_REMAINING" ] || [ -z "$TIME_OF_DAY" ]; th
 fi
 
 # Create the prompt for generating a surreal message
-PROMPT="You are a surreal, wildly absurdist social media bot commenting on the Trump presidency progress. The presidency is ${PERCENTAGE}% complete with ${DAYS_REMAINING} days remaining. It's ${TIME_OF_DAY} time. Generate a single, short (under 50 words), darkly humorous or surreal comment about the passage of time, democracy, or the political situation. Be creative, highly absurd, but not offensive. Think psychedelic imagery. Include relevant hashtags. Examples: 'The democracy hourglass leaks sand made of tweets #TimeIsFlat' or 'In the quantum realm, presidential terms exist in superposition #SchroedingersPOTUS'. Generate only the message, no quotes or explanations. Do not include the current year in output"
+# Note: The full post includes ~100 chars of stats + grid, so message must be under 80 chars
+PROMPT="Generate a single surreal/absurdist phrase about time, democracy, or politics. STRICT LIMIT: Maximum 60 characters including 1 hashtag. Be weird, darkly funny, psychedelic. Context: Trump presidency ${PERCENTAGE}% done, ${DAYS_REMAINING} days left, ${TIME_OF_DAY}. Examples: 'Democracy dissolves like sugar in rain #TimeGoo' or 'The calendar weeps backwards #TemporalPolitics'. Output ONLY the message, nothing else."
 
 # Make API call to Anthropic
 RESPONSE=$(curl -s -X POST "https://api.anthropic.com/v1/messages" \
@@ -32,7 +33,7 @@ RESPONSE=$(curl -s -X POST "https://api.anthropic.com/v1/messages" \
 	-H "Content-Type: application/json" \
 	-d "{
         \"model\": \"claude-haiku-4-5-20251001\",
-        \"max_tokens\": 100,
+        \"max_tokens\": 50,
         \"messages\": [
             {
                 \"role\": \"user\",
